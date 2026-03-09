@@ -1,0 +1,885 @@
+{
+  "name": "RAG",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "RAG 2.0 ",
+        "formDescription": "le système fait de l'OCR pour identifier la source et le type de document, puis un LLM analyse ces données pour calculer un score de fiabilité. \n\nLe contenu est ensuite vectorisé et stocké dans Qdrant avec ses métadonnées (score, source, type) pour un RAG filtrable par niveau de confiance.\n\nLe tout en open source self hosté",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Fichier",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf, .png, .jpeg"
+            },
+            {
+              "fieldLabel": "Lien",
+              "placeholder": "Collez l'URL de la page web"
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -1872,
+        592
+      ],
+      "id": "f2b4b79f-d9ee-416d-80d1-023be7830a02",
+      "name": "On form submission",
+      "webhookId": "27d46b5f-dde5-41fc-927a-e56309ec27bf"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Lien }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    },
+                    "id": "0a8237f0-3275-4622-8b41-0ba2b865b55d"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "55b4c3ff-7d0e-4ffd-ad86-4a75dd6b5d2d",
+                    "leftValue": "={{ $json.Fichier }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1664,
+        592
+      ],
+      "id": "1db3ce78-6f63-4904-a303-8bb6f011222b",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "binaryProperty": "Fichier",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mistralAi",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        432
+      ],
+      "id": "e290f30e-a087-41a6-995b-1f2abcd498f8",
+      "name": "OCR",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "fZpaYJTQqof4iMEB",
+          "name": "Mistral Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "RAG ULTIME PISCINE",
+          "mode": "list",
+          "cachedResultName": "RAG ULTIME PISCINE"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        304,
+        336
+      ],
+      "id": "4cfef799-5995-4ae6-a09e-b30ff0be8c7b",
+      "name": "Qdrant Vector Store",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ee2oH5ZQ8nz8zWPB",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        320,
+        528
+      ],
+      "id": "b5bc7cd0-8856-4218-ab5f-313b918afe3e",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "XZkU1lShgYx7PET4",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $('OCR').item.json.extractedText }}",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "score_fiabilite",
+                "value": "={{$json.score_fiabilite}}"
+              },
+              {
+                "name": "source_document",
+                "value": "={{$json.source}}"
+              },
+              {
+                "name": "type_document",
+                "value": "={{$json.type_document}}"
+              },
+              {
+                "name": "date_publication",
+                "value": "={{$json.date_publication}}"
+              },
+              {
+                "name": "justification",
+                "value": "={{$json.justification}}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        528,
+        544
+      ],
+      "id": "c3d4f1df-f225-41d7-a52b-9ee65f587503",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "=Tu es un assistant intelligent spécialisé dans l'analyse de documents.\n\nTu dois TOUJOURS :\n1. Répondre uniquement en te basant sur les documents fournis par l'outil Qdrant\n2. Mentionner le score de fiabilité (score_fiabilite) de chaque source utilisée\n3. Si le score est inférieur à 70, préciser explicitement que la source est moins fiable\n4. Citer le type de document (type_document) et la source (source_document) pour chaque information\n\nRéponds de manière concise en citant :\n- La définition exacte du document\n- Le score de fiabilité (X/100)\n- Le type de source\n\nÉvite les répétitions inutiles.\n\nSi aucun document pertinent n'est trouvé, dis-le clairement au lieu d'inventer une réponse."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -1360,
+        1072
+      ],
+      "id": "cad306ce-9a27-4b10-97e4-005c8a6ac501",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Tu dois répondre en te basant uniquement sur les documents fournis. \nMentionne toujours le score de fiabilité (score_fiabilite) de chaque source utilisée.\nSi le score est inférieur à 70, précise que la source est moins fiable.",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "RAG ULTIME PISCINE",
+          "mode": "list",
+          "cachedResultName": "RAG ULTIME PISCINE"
+        },
+        "topK": 10,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        -1088,
+        1232
+      ],
+      "id": "f4a9aca5-a99e-4aa4-9be9-e77f00a6d6a7",
+      "name": "Qdrant Vector Store1",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ee2oH5ZQ8nz8zWPB",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -1456,
+        1248
+      ],
+      "id": "8042397c-2161-4453-a366-966083afabe8",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "XZkU1lShgYx7PET4",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -1072,
+        1408
+      ],
+      "id": "2786284d-404b-4144-9375-b58b025f49a7",
+      "name": "Embeddings OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "XZkU1lShgYx7PET4",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "content",
+              "cssSelector": "<body>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        -1184,
+        848
+      ],
+      "id": "33baa844-fbd0-4f4c-a3dd-601431fdbeac",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.Lien }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1488,
+        848
+      ],
+      "id": "9b0fea6e-debf-4336-82dd-e28fa897378a",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "let text = $json.content || \"\";\n\n// Juste supprimer les URLs\ntext = text.replace(/https?:\\/\\/[^\\s\\]]+/g, '');\n\n// Supprimer les lignes qui sont juste des crochets vides\ntext = text.replace(/\\n\\s*\\[\\s*\\n/g, '\\n');\n\n// Supprimer multiples sauts de ligne\ntext = text.replace(/\\n{3,}/g, '\\n\\n');\n\nreturn { json: { \n  content: text.trim()\n}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        864
+      ],
+      "id": "da487f4f-dc42-4367-9eab-a960e34f5ef6",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Analyse ce texte extrait par OCR d'un document et identifie les éléments suivants :\n\n1. **Source/Organisme émetteur** : Quel est le nom de l'organisation, entreprise, ministère ou auteur qui a produit ce document ? (ex: \"Ministère des Finances\", \"Blog personnel de Jean Dupont\", \"Université Paris-Sorbonne\")\n\n2. **Type de document** : S'agit-il d'un document officiel, rapport institutionnel, article de blog, présentation, brochure commerciale, etc. ?\n\n3. **Indices de crédibilité** :\n   - Présence de logos officiels ou mentions légales ?\n   - Structure professionnelle (table des matières, bibliographie, références) ?\n   - Mentions d'auteurs qualifiés ou d'institutions reconnues ?\n   - Présence de sources/citations ?\n\n4. **Date de publication** : Si visible dans le document\n\n5. **Score de fiabilité suggéré** : Sur une échelle de 0 à 100, estime la fiabilité de ce document en fonction de sa source et de sa structure\n\nRéponds au format JSON structuré :\n{\n  \"source\": \"...\",\n  \"type_document\": \"...\",\n  \"indices_credibilite\": [\"...\", \"...\"],\n  \"date_publication\": \"YYYY-MM-DD ou null\",\n  \"score_fiabilite\": 85,\n  \"justification\": \"...\"\n}\n\nTexte à analyser :\n{{ $json.extractedText }}\n{{ $json.content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -672,
+        432
+      ],
+      "id": "ef2c3dea-eea0-42f8-9406-e3dbd0624142",
+      "name": "OCR analyse",
+      "credentials": {
+        "openAiApi": {
+          "id": "XZkU1lShgYx7PET4",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Analyse ce contenu extrait d'une page web et identifie :\n\n1. Source/Organisme émetteur : Quel site/organisation ?\n2. Type de contenu : Presse, blog, site institutionnel, commercial, etc.\n3. Indices de crédibilité : \n   - Domaine reconnu ?\n   - Présence d'auteurs/sources ?\n   - Qualité éditoriale ?\n4. Date de publication : Si visible\n5. Score de fiabilité /100 basé sur :\n   - Sites gouv/edu : 90-100\n   - Médias reconnus (NY Times, BBC, Le Monde) : 75-85\n   - Sites commerciaux/agrégateurs : 40-60\n   - Blogs personnels : 20-40\n\nURL source : {{$('Switch').item.json.Lien}}\nContenu : {{$json.content}}\n\nRéponds UNIQUEMENT en JSON :\n{\n  \"source\": \"...\",\n  \"type_document\": \"...\",\n  \"indices_credibilite\": [\"...\"],\n  \"date_publication\": null,\n  \"score_fiabilite\": 50,\n  \"justification\": \"...\"\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -688,
+        768
+      ],
+      "id": "32520adb-0411-4434-b169-5cdbe6b6c7c1",
+      "name": "WEB analyse",
+      "credentials": {
+        "openAiApi": {
+          "id": "XZkU1lShgYx7PET4",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "RAG ULTIME PISCINE",
+          "mode": "list",
+          "cachedResultName": "RAG ULTIME PISCINE"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        336,
+        672
+      ],
+      "id": "57ecab27-9c33-4e52-a0b4-79ba027837cc",
+      "name": "Qdrant Vector Store2",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ee2oH5ZQ8nz8zWPB",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.content }}",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "score_fiabilite",
+                "value": "={{$json.score_fiabilite}}"
+              },
+              {
+                "name": "source_document",
+                "value": "={{$json.source}}"
+              },
+              {
+                "name": "type_document",
+                "value": "={{$json.type_document}}"
+              },
+              {
+                "name": "date_publication",
+                "value": "={{$json.date_publication}}"
+              },
+              {
+                "name": "justification",
+                "value": "={{$json.justification}}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        608,
+        864
+      ],
+      "id": "9d119124-1a2a-4161-bd5c-0b5cbf508460",
+      "name": "Default Data Loader1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        304,
+        864
+      ],
+      "id": "bd3bf8fe-a89f-43dd-8df6-fb61f5ab4c31",
+      "name": "Embeddings OpenAI2",
+      "credentials": {
+        "openAiApi": {
+          "id": "XZkU1lShgYx7PET4",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = JSON.parse($input.first().json.message.content.replace(/```json\\n?|\\n?```/g, ''));\n\n// Récupère le texte OCR\nconst originalContent = $('OCR').item.json.extractedText || \"\";\n\nreturn {\n  json: {\n    content: originalContent, // LE TEXTE À CHUNKER\n    source: response.source,\n    type_document: response.type_document,\n    score_fiabilite: response.score_fiabilite,\n    date_publication: response.date_publication,\n    justification: response.justification,\n    indices_credibilite: response.indices_credibilite\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        432
+      ],
+      "id": "ff3303ce-5826-4245-9221-68ca0a37205f",
+      "name": "java ocr"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = JSON.parse($input.first().json.message.content.replace(/```json\\n?|\\n?```/g, ''));\n\n// Récupère le contenu original (depuis le node HTML via le Code de nettoyage)\nconst originalContent = $('Code in JavaScript1').first().json.content || \"\";\n\nreturn {\n  json: {\n    content: originalContent, // LE TEXTE À CHUNKER\n    source: response.source,\n    type_document: response.type_document,\n    score_fiabilite: response.score_fiabilite,\n    date_publication: response.date_publication,\n    justification: response.justification,\n    indices_credibilite: response.indices_credibilite\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        816
+      ],
+      "id": "4d74b284-dfe8-4308-93e2-fa3eb0472c98",
+      "name": "java html"
+    },
+    {
+      "parameters": {
+        "content": "# 💬 WORKFLOW DE REQUÊTE\n\n## Chat trigger\nReçoit question utilisateur\n\n## AI Agent\n- LLM : OpenAI\n- Memory : Simple Memory\n- Tool : Qdrant (retrieve docs)\n\n## Qdrant Vector Store1\nMode : Retrieve documents\n- Recherche similarité\n- Filtre optionnel sur score\n- Reranker Cohere (top 3)\n\n## Réponse\nCite source + score fiabilité",
+        "height": 560,
+        "width": 1312,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2096,
+        1008
+      ],
+      "id": "503fc8f6-dce9-4b2b-b1a1-854edb14365c",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# 📥 WORKFLOW D'INGESTION\n\n## Déclencheur\nForm trigger → Upload fichier PDF OU saisie URL\n\n## Switch Node\nRoute selon type d'input :\n- Output 0 = Fichier présent → Branche PDF\n- Output 1 = URL présente → Branche WEB\n",
+        "height": 704,
+        "width": 544,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2096,
+        272
+      ],
+      "id": "9a3005c4-c891-472a-b787-b70f9d63efdf",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# 📄 BRANCHE PDF\n\n1. **OCR** (Mistral API)\n   - Extrait texte du PDF\n\n2. **LLM OCR analyse**\n   - Identifie source, type doc\n   - Calcule score fiabilité /100\n\n3. **Code Java OCR**\n   - Parse JSON du LLM\n   - Récupère texte OCR\n\n4. **Default Data Loader**\n   - Chunking du texte\n   - Ajoute métadonnées\n",
+        "height": 496,
+        "width": 1472,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1504,
+        144
+      ],
+      "id": "d7ed790d-098d-41ab-ae06-786491791693",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "# 🌐 BRANCHE WEB\n1. **HTTP Request**\n   - Télécharge la page HTML\n\n2. **HTML Extract**\n   - Extrait contenu texte (body)\n",
+        "height": 320,
+        "width": 512
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1504,
+        656
+      ],
+      "id": "4ab31a05-68bc-4354-b8f2-2d9f1d4972c5",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "# 🌐 NETTOYAGE ET ANALYSE\n- Supprime menus/footer/URLs\n   - Garde contenu principal\n\n4. **LLM WEB analyse**\n   - Analyse domaine + contenu\n   - Score fiabilité /100",
+        "height": 320,
+        "width": 512
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        656
+      ],
+      "id": "5b336bb7-796e-40d1-8d83-20802e4d8af9",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "# Code Java HTML\n\n   - Parse JSON + récupère texte",
+        "height": 320,
+        "width": 416
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        656
+      ],
+      "id": "7d6c354e-1ae3-43f0-af62-2c14530ccb7f",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "# 💾 STOCKAGE VECTORIEL\n\n## Embeddings OpenAI\nVectorise chaque chunk de texte\n\n\n\n\n\n\n\n\n\n\n\n\n\n## Qdrant Vector Store\nStocke vecteurs + métadonnées :\n- content (texte)\n- source\n- type_document\n\n\n- **score_fiabilite /100**\n- date_publication\n- justification\n- indices_credibilite\n",
+        "height": 848,
+        "width": 736,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        128
+      ],
+      "id": "094bb334-052f-4ca7-991e-44e67418f469",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -1296,
+        1248
+      ],
+      "id": "f8a569f9-f0e0-4e1c-8825-d6842152ed13",
+      "name": "MEMORY"
+    },
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Bonjour,\n\nPosez votre question j'irais sourcer mes réponses depuis la base de données vectorielle",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1712,
+        1072
+      ],
+      "id": "08f50e37-9c2c-4bef-bbdb-3513c14dd87d",
+      "name": "TRIGGER REQUETE",
+      "webhookId": "f9782a0d-952c-4a18-9dc6-d990d41e239f"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "OCR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OCR": {
+      "main": [
+        [
+          {
+            "node": "OCR analyse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "WEB analyse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OCR analyse": {
+      "main": [
+        [
+          {
+            "node": "java ocr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WEB analyse": {
+      "main": [
+        [
+          {
+            "node": "java html",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader1": {
+      "ai_document": [
+        [
+          {
+            "node": "Qdrant Vector Store2",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI2": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store2",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "java ocr": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "java html": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Vector Store2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MEMORY": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TRIGGER REQUETE": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "eb85a08d-99fe-4385-8813-e625da8b5d50",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f3187a4ffc657803846957e92025824ab099e67ad526eda5c75c89d1126fd5cd"
+  },
+  "id": "2fKE6B2suC09s9NMP8JMo",
+  "tags": []
+}
